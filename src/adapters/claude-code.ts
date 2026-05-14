@@ -42,7 +42,7 @@ export class ClaudeCodeAdapter implements BaseAdapter {
 
   async isAvailable(): Promise<boolean> {
     try {
-      execSync("which claude", { stdio: "pipe" });
+      execSync("which claude", { stdio: "pipe", timeout: 5000 });
       return true;
     } catch {
       return false;

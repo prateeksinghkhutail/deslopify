@@ -1,6 +1,6 @@
 {
   "name": "deslopify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatic context bloat management for AI developer CLIs (Claude Code, OpenCode)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
