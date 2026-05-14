@@ -15,13 +15,13 @@ When using AI CLIs like Claude Code or OpenCode, the context window fills up fas
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  deslopify daemon                        │
+│                  deslopify daemon                       |                       
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  Claude Code hooks ──┐                                  │
 │  OpenCode plugin ────┼──▶ Context Monitor               │
 │  FS watcher (fb) ────┘         │                        │
-│                          threshold hit?                  │
+│                          threshold hit?                 |               
 │                                │                        │
 │                         ┌──────▼──────┐                 │
 │                         │  Wait Idle  │                 │
@@ -34,7 +34,7 @@ When using AI CLIs like Claude Code or OpenCode, the context window fills up fas
 │                    │  3. Write memory file │            │
 │                    │  4. Execute /compact  │            │
 │                    │  5. Inject summary    │            │
-│                    └──────────────────────┘            │
+│                    └──────────────────────┘             |
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
