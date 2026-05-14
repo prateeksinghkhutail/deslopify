@@ -51,8 +51,8 @@ export async function startDaemon(): Promise<DaemonStatus> {
 
   // Write a runner script that the daemon will use
   const runnerPath = path.join(getDeslopifyHome(), "daemon-runner.mjs");
-  const serverPath = path.join(distDir, "daemon", "server.js");
-  const configPath = path.join(distDir, "config", "loader.js");
+  const serverPath = path.join(distDir, "src", "daemon", "server.js");
+  const configPath = path.join(distDir, "src", "config", "loader.js");
 
   const runnerContent = `
 import { DeslopifyDaemon } from '${serverPath}';
