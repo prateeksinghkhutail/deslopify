@@ -80,33 +80,65 @@ export class OpenCodeAdapter implements BaseAdapter {
         `SELECT * FROM session 
          WHERE time_archived IS NULL 
          ORDER BY rowid DESC 
-         LIMIT 10`
+         LIMIT 20`
       ) as OpenCodeSession[];
 
-      return sessions.map((s) => {
-        const tokensUsed =
-          (s.tokens_input || 0) +
-          (s.tokens_output || 0) +
-          (s.tokens_cache_read || 0) +
-          (s.tokens_cache_write || 0);
+      const results: SessionInfo[] = [];
+
+      for (const s of sessions) {
+        // Get actual token usage from the latest step-finish part
+        const tokensUsed = this.getSessionTokensFromParts(db, s.id);
+
+        // Skip sessions with no activity (no step-finish parts)
+        if (tokensUsed === 0) continue;
+
         const modelStr = s.model || "claude-sonnet-4-20250514";
         const maxTokens = getModelMaxTokens(modelStr, this.config);
 
-        return {
+        results.push({
           id: s.id,
           cli: "opencode" as AdapterType,
-          projectPath: this.resolveProjectPath(s.project_id),
+          projectPath: this.resolveProjectPath(s.project_id, db),
           model: parseModelId(modelStr),
           tokensUsed,
           maxTokens,
           percentUsed: maxTokens > 0 ? tokensUsed / maxTokens : 0,
           status: s.time_compacting ? "compacting" : "active",
-          lastActivity: Date.now(), // OpenCode doesn't expose last activity time easily
-        } as SessionInfo;
-      });
+          lastActivity: Date.now(),
+        } as SessionInfo);
+      }
+
+      return results;
     } catch (err) {
       logger.error("Failed to get OpenCode sessions", { error: String(err) });
       return [];
+    }
+  }
+
+  /**
+   * Get token usage for a session from the part table's step-finish entries.
+   * The latest step-finish entry's `total` field represents the current context window usage.
+   */
+  private getSessionTokensFromParts(db: any, sessionId: string): number {
+    try {
+      const results = this.runQuery(
+        db,
+        `SELECT data FROM part 
+         WHERE session_id = ? AND data LIKE '%"type":"step-finish"%'
+         ORDER BY time_created DESC 
+         LIMIT 1`,
+        [sessionId]
+      );
+
+      if (results.length === 0) return 0;
+
+      const data = JSON.parse(results[0].data);
+      if (data.tokens && typeof data.tokens.total === "number") {
+        return data.tokens.total;
+      }
+      return 0;
+    } catch {
+      return 0;
     }
   }
 
@@ -124,11 +156,7 @@ export class OpenCodeAdapter implements BaseAdapter {
       const session = results[0];
       if (!session) return null;
 
-      const tokensUsed =
-        (session.tokens_input || 0) +
-        (session.tokens_output || 0) +
-        (session.tokens_cache_read || 0) +
-        (session.tokens_cache_write || 0);
+      const tokensUsed = this.getSessionTokensFromParts(db, sessionId);
 
       return { used: tokensUsed, model: session.model || "unknown" };
     } catch {
@@ -280,7 +308,7 @@ export class OpenCodeAdapter implements BaseAdapter {
 
       const session = results[0];
       if (!session) return null;
-      return this.resolveProjectPath(session.project_id);
+      return this.resolveProjectPath(session.project_id, db);
     } catch {
       return null;
     }
@@ -346,8 +374,24 @@ export function onToolComplete(tool) {
     }
   }
 
-  private resolveProjectPath(projectId: string): string {
-    // OpenCode project_id might be the path or an encoded form
+  private resolveProjectPath(projectId: string, db?: any): string {
+    // Try to look up the project worktree from the database
+    if (db) {
+      try {
+        const results = this.runQuery(
+          db,
+          `SELECT worktree FROM project WHERE id = ?`,
+          [projectId]
+        );
+        if (results.length > 0 && results[0].worktree) {
+          return results[0].worktree;
+        }
+      } catch {
+        // Fall through to other methods
+      }
+    }
+
+    // Fallback: if project_id is a path
     if (fs.existsSync(projectId)) return projectId;
     return process.cwd();
   }

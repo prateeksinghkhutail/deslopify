@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createRequire } from "module";
 import { Command } from "commander";
 import { loadConfig } from "../src/config/loader.js";
 import { startDaemon, stopDaemon, getDaemonStatus } from "../src/daemon/process.js";
@@ -10,6 +11,22 @@ import { ContextTracker } from "../src/monitor/context-tracker.js";
 import { formatTokens } from "../src/utils/tokens.js";
 import { logger } from "../src/utils/logger.js";
 import type { AdapterType } from "../src/config/loader.js";
+import * as path from "path";
+import * as fs from "fs";
+
+// Read version from package.json at runtime
+function getVersion(): string {
+  let dir = __dirname;
+  while (dir !== path.dirname(dir)) {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      return pkg.version || "0.0.0";
+    }
+    dir = path.dirname(dir);
+  }
+  return "0.0.0";
+}
 
 const program = new Command();
 
@@ -18,7 +35,7 @@ program
   .description(
     "Automatic context bloat management for AI developer CLIs (Claude Code, OpenCode)"
   )
-  .version("1.0.0");
+  .version(getVersion());
 
 // ─── START ───────────────────────────────────────────────────────────────────
 
@@ -153,7 +170,7 @@ program
         const maxTokens = formatTokens(session.maxTokens);
 
         console.log(
-          `  [${session.cli}] ${session.id.slice(0, 8)}... ${bar} ${pct}% (${tokens}/${maxTokens})`
+          `  [${session.cli}] ${session.id.slice(0, 16)}... ${bar} ${pct}% (${tokens}/${maxTokens})`
         );
         console.log(
           `    Model: ${session.model} | Project: ${session.projectPath}`

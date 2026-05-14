@@ -33,7 +33,9 @@ const config: DeslopifyConfig = {
 function createMockDb(queryResults: Record<string, any[]>) {
   return {
     prepare: vi.fn((sql: string) => {
-      const key = Object.keys(queryResults).find((k) => sql.includes(k)) || "";
+      // Match most specific key first (longest match wins)
+      const keys = Object.keys(queryResults).sort((a, b) => b.length - a.length);
+      const key = keys.find((k) => sql.includes(k)) || "";
       const results = queryResults[key] || [];
       let idx = 0;
       return {
@@ -77,19 +79,24 @@ describe("OpenCodeAdapter", () => {
   });
 
   describe("getActiveSessions", () => {
-    it("returns sessions from database", async () => {
+    it("returns sessions from database with token data from parts", async () => {
       const mockDb = createMockDb({
         session: [
           {
             id: "ses_1",
             project_id: "/project",
             model: "claude-sonnet-4-20250514",
-            tokens_input: 1000,
-            tokens_output: 500,
-            tokens_cache_read: 200,
-            tokens_cache_write: 100,
+            tokens_input: 0,
+            tokens_output: 0,
+            tokens_cache_read: 0,
+            tokens_cache_write: 0,
             time_compacting: null,
             time_archived: null,
+          },
+        ],
+        "step-finish": [
+          {
+            data: JSON.stringify({ type: "step-finish", tokens: { total: 75000, input: 3, output: 1500, reasoning: 0, cache: { write: 73000, read: 0 } }, cost: 0, reason: "stop" }),
           },
         ],
       });
@@ -101,8 +108,34 @@ describe("OpenCodeAdapter", () => {
       const sessions = await adapter.getActiveSessions();
       expect(sessions.length).toBe(1);
       expect(sessions[0].id).toBe("ses_1");
-      expect(sessions[0].tokensUsed).toBe(1800); // 1000+500+200+100
+      expect(sessions[0].tokensUsed).toBe(75000);
       expect(sessions[0].cli).toBe("opencode");
+    });
+
+    it("filters out sessions with no step-finish parts (no activity)", async () => {
+      const mockDb = createMockDb({
+        session: [
+          {
+            id: "ses_1",
+            project_id: "/project",
+            model: "claude-sonnet-4-20250514",
+            tokens_input: 0,
+            tokens_output: 0,
+            tokens_cache_read: 0,
+            tokens_cache_write: 0,
+            time_compacting: null,
+            time_archived: null,
+          },
+        ],
+        // No step-finish entries
+      });
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from("fake-db") as any);
+      vi.mocked(initSqlJs).mockResolvedValue({ Database: vi.fn().mockReturnValue(mockDb) } as any);
+
+      const sessions = await adapter.getActiveSessions();
+      expect(sessions.length).toBe(0);
     });
 
     it("returns empty on DB error", async () => {
@@ -118,16 +151,21 @@ describe("OpenCodeAdapter", () => {
   });
 
   describe("getTokenUsage", () => {
-    it("sums all 4 token columns", async () => {
+    it("reads token total from latest step-finish part", async () => {
       const mockDb = createMockDb({
         session: [
           {
             id: "ses_1",
             model: "claude-sonnet-4-20250514",
-            tokens_input: 5000,
-            tokens_output: 2000,
-            tokens_cache_read: 1000,
-            tokens_cache_write: 500,
+            tokens_input: 0,
+            tokens_output: 0,
+            tokens_cache_read: 0,
+            tokens_cache_write: 0,
+          },
+        ],
+        "step-finish": [
+          {
+            data: JSON.stringify({ type: "step-finish", tokens: { total: 8500, input: 3, output: 500, reasoning: 0, cache: { write: 8000, read: 0 } }, cost: 0, reason: "stop" }),
           },
         ],
       });
@@ -212,6 +250,11 @@ describe("OpenCodeAdapter", () => {
             tokens_cache_write: 0,
             time_compacting: null,
             time_archived: null,
+          },
+        ],
+        "step-finish": [
+          {
+            data: JSON.stringify({ type: "step-finish", tokens: { total: 50000, input: 3, output: 1000, reasoning: 0, cache: { write: 49000, read: 0 } }, cost: 0, reason: "stop" }),
           },
         ],
       });
