@@ -1,5 +1,5 @@
 {
-  "name": "deslopify",
+  "name": "@psinghkhutail/deslopify",
   "version": "1.0.1",
   "description": "Automatic context bloat management for AI developer CLIs (Claude Code, OpenCode)",
   "main": "dist/index.js",
