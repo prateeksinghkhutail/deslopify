@@ -1,0 +1,8 @@
+{
+  "name": "deslopify-opencode-plugin",
+  "version": "1.0.0",
+  "description": "OpenCode plugin for deslopify - automatic context management",
+  "main": "index.js",
+  "type": "module",
+  "license": "MIT"
+}

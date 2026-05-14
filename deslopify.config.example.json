@@ -1,0 +1,28 @@
+{
+  "$schema": "./config-schema.json",
+  "threshold": 0.4,
+  "memoryFile": "project-memory.md",
+  "pollInterval": 5000,
+  "adapters": ["claude-code", "opencode"],
+  "summarization": {
+    "provider": "same-cli",
+    "maxSummaryTokens": 2000,
+    "prompt": "Summarize this conversation transcript. Extract: 1) Key architectural decisions made, 2) Tasks completed, 3) Open bugs/issues, 4) Current goals and next steps. Be concise and structured."
+  },
+  "injection": {
+    "method": "first-message",
+    "maxInjectTokens": 1500
+  },
+  "idle": {
+    "waitMs": 3000,
+    "maxWaitMs": 30000,
+    "checkInterval": 1000
+  },
+  "models": {
+    "claude-sonnet-4-20250514": 200000,
+    "claude-opus-4-20250514": 200000,
+    "claude-haiku-3-20250414": 200000,
+    "gpt-4o": 128000,
+    "gpt-4o-mini": 128000
+  }
+}
