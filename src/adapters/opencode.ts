@@ -34,7 +34,7 @@ export class OpenCodeAdapter implements BaseAdapter {
 
   async isAvailable(): Promise<boolean> {
     try {
-      execSync("which opencode", { stdio: "pipe" });
+      execSync("which opencode", { stdio: "pipe", timeout: 5000 });
       return fs.existsSync(getOpenCodeDbPath());
     } catch {
       return false;
@@ -331,16 +331,11 @@ export function onToolComplete(tool) {
 
     fs.writeFileSync(path.join(pluginDir, "index.js"), pluginCode);
 
-    // Try to register the plugin with OpenCode
-    try {
-      execSync(`opencode plugin ${pluginDir}`, { stdio: "pipe" });
-      logger.info("OpenCode plugin installed successfully");
-    } catch {
-      logger.warn(
-        "Could not auto-register OpenCode plugin. " +
-          `Please run: opencode plugin ${pluginDir}`
-      );
-    }
+    logger.info(`OpenCode plugin files written to ${pluginDir}`);
+    logger.info(
+      "To complete installation, add the plugin path to your OpenCode config:\n" +
+        `  Plugin directory: ${pluginDir}`
+    );
   }
 
   async uninstall(): Promise<void> {
